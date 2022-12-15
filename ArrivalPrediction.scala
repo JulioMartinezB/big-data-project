@@ -26,7 +26,9 @@ object ArrivalPrediction {
                       .format("csv")
                       .option("delimiter", ",")
                       .option("header", true)
-                      .load("C:\\Users\\carvs\\OneDrive - Universidad Politécnica de Madrid\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\features.csv")
+                      .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\features.csv")
+
+    flights.show()
 
     val cols_int = Seq("DayOfWeek", "CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "DepTimeMin", "CRSDepTimeMin",
                       "CRSArrTimeMin", "avg(DepDelay)","ArrDelay")
@@ -40,20 +42,21 @@ object ArrivalPrediction {
       flights = flights.withColumn(col, flights(col).cast("double"))
     }
 
-    ModelTraining.modelTraining(flights)
+    FeatureSelection.featureSelection(flights)
+    //LinearRegressionTraining.modelTraining(flights)
 
 
 //    val flights = spark.read
 //                  .format("csv")
 //                  .option("delimiter", ",")
 //                  .option("header", true)
-//                  .load("C:\\Users\\carvs\\OneDrive - Universidad Politécnica de Madrid\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\2005.csv")
+//                  .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\2005.csv")
 //
 //    var airports = spark.read
 //      .format("csv")
 //      .option("delimiter", ",")
 //      .option("header", true)
-//      .load("C:\\Users\\carvs\\OneDrive - Universidad Politécnica de Madrid\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\airports.csv")
+//      .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\airports.csv")
 //
 //    val airlines = flights.groupBy("UniqueCarrier")
 //                           .agg(mean("DepDelay"))
@@ -74,6 +77,7 @@ object ArrivalPrediction {
 //    features = features.withColumn("CRSArrTimeMin", (features("CRSArrTime") / 100).cast("int"))
 //    features = features.withColumn("CRSArrTimeMin", (features("CRSArrTimeMin") * 60 + features("CRSArrTime") % 100).cast("int"))
 //    features = features.drop("CRSArrTime")
+//
 //
 //    features = features.join(airlines, Seq("UniqueCarrier"), "left").drop("UniqueCarrier")
 //
@@ -142,8 +146,8 @@ object ArrivalPrediction {
 //    for (columna <- cols) {
 //      val quantiles = features.stat.approxQuantile(columna, Array(0.25, 0.75), 0.01)
 //      val IQR = quantiles(1) - quantiles(0)
-//      val lowerRange = quantiles(0) - 1.5 * IQR
-//      val upperRange = quantiles(1) + 1.5 * IQR
+//      val lowerRange = quantiles(0) - 3 * IQR
+//      val upperRange = quantiles(1) + 3 * IQR
 //      print(lowerRange + " " + upperRange)
 //      features.filter(features(columna) < lowerRange || features(columna) > upperRange).show()
 //      features = features.filter(features(columna) > lowerRange && features(columna) < upperRange)
@@ -152,40 +156,11 @@ object ArrivalPrediction {
 //    print("RWOWOREJOWRPEFPWJFPWEJFPWEOJFPIWIE   ")
 //    print(features.count())
 //
-//    features.write.format("csv").option("header", "true").save(".\\data\\features.csv")
-
-
-
-
-
-
-//    val pagesTuples = pageCounts.flatMap(line => {
-//      val tokens = line.split(" ")
-//      if (tokens.size == 4) {
-//        List((tokens(0), tokens(1), tokens(2).toLong, tokens(3).toLong))
-//      } else {
-//        List()
-//      }
-//    })
+//    features.write.format("csv").option("header", "true").save(".\\data\\features2.csv")
 //
-//    val mostVisited = pagesTuples.reduce((t1,t2) => if (t1._3 > t2._3) t1._3 else t2._3)
-//    val leastVisited = pagesTuples.reduce((t1,t2) => if (t1._3 < t2._3) t1._3 else t2._3)
 //
-//    val dist_bin = (mostVisited - leastVisited) / 20
 //
-//    val bin_values = pagesTuples.flatMap((tuple => {
-//      List(tuple._3 % dist_bin, 1)
-//    }))
 
-//    // Another option. Lower complexity
-//    val maxReq = enPagesTuples.map(_._3)
-//      .reduce(math.max(_, _))
-//    val mostReq = enPagesTuples.filter(_._3 == maxReq).first
-//    println(mostReq._2 + "\t" + mostReq._3)
-//
-//    // Yet another, even better option
-//    val mostReq = enPagesTuples.reduce((t1, t2) => if (t1._3 > t2._3) t1 else t2)
-//    println(mostReq._2 + "\t" + mostReq._3)
 
 
     
