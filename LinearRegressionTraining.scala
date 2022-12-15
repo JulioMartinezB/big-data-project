@@ -8,7 +8,7 @@ import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 
 object LinearRegressionTraining {
 
-    def modelTraining(features: DataFrame): Unit = {
+    def modelTraining(features: DataFrame) {
 
       val Array(train, test) = features.randomSplit(Array(0.9, 0.1), seed = 12345)
       val cols = train.drop("ArrDelay").columns

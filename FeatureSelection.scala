@@ -9,7 +9,7 @@ object FeatureSelection {
 
   def featureSelection(data: DataFrame) {
 
-    val cols = data.drop("ArrDelay").columns
+    var cols = data.drop("ArrDelay").columns
 
     val assembler = new VectorAssembler()
       .setInputCols(cols)
@@ -23,7 +23,7 @@ object FeatureSelection {
       .setFeatureType("continuous")
       .setLabelType("continuous")
       .setSelectionMode("numTopFeatures")
-      .setSelectionThreshold(12)
+      .setSelectionThreshold(4)
       .setFeaturesCol("features")
       .setLabelCol("ArrDelay")
       .setOutputCol("selectedFeatures")
