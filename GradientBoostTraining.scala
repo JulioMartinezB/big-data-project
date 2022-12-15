@@ -39,7 +39,7 @@ object GradientBoostTraining {
       .setEstimatorParamMaps(paramGridGBT)
       .setNumFolds(3)
 
-    val cvGBTModel = gbt.fit(train_data)
+    val cvGBTModel = cvGBT.fit(train_data)
     val predictions = cvGBTModel.transform(test_data)
 
     val rmse = evaluator.evaluate(predictions)
