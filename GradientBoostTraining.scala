@@ -31,19 +31,24 @@ object GradientBoostTraining {
     val evaluator = new RegressionEvaluator()
       .setLabelCol("ArrDelay")
       .setPredictionCol("prediction")
-      .setMetricName("rmse")
+      
 
     val cvGBT = new CrossValidator()
       .setEstimator(gbt)
-      .setEvaluator(evaluator)
+      .setEvaluator(evaluator.setMetricName("rmse"))
       .setEstimatorParamMaps(paramGridGBT)
       .setNumFolds(3)
 
     val cvGBTModel = cvGBT.fit(train_data)
     val predictions = cvGBTModel.transform(test_data)
 
-    val rmse = evaluator.evaluate(predictions)
-    println(s"Root Mean Squared Error (RMSE) on test data = $rmse")
+    // Estos cambios son para poder ver las metricas de MAE y  R2  junto al RMSE 
+    val rmse = evaluator.setMetricName("rmse").evaluate(predictions)
+    val mae = evaluator.setMetricName("mae").evaluate(predictions)
+    val r2 = evaluator.setMetricName("r2").evaluate(predictions)
+    println(s"\nRoot Mean Squared Error (RMSE) on test data = $rmse")
+    println(s"Root Absolute Error (RAE) on test data = $mae")
+    println(s"R2 on test data= $r2 \n")
 
   }
 

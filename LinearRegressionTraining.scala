@@ -36,20 +36,23 @@ object LinearRegressionTraining {
       val evaluator = new RegressionEvaluator()
         .setLabelCol("ArrDelay")
         .setPredictionCol("prediction")
-        .setMetricName("rmse")
-
+        
       val cvLR = new CrossValidator()
         .setEstimator(lr)
-        .setEvaluator(evaluator)
+        .setEvaluator(evaluator.setMetricName("rmse"))
         .setEstimatorParamMaps(paramGridLR)
         .setNumFolds(3)
 
       val lrModel = cvLR.fit(train_data)
       val predictions = lrModel.transform(test_data)
-      val rmseLR = evaluator.evaluate(predictions)
-
-      val rmse = evaluator.evaluate(predictions)
-      println(s"Root Mean Squared Error (RMSE) on test data = $rmse")
+      
+      // Estos cambios son para poder ver las metricas de MAE y  R2  junto al RMSE 
+      val rmse = evaluator.setMetricName("rmse").evaluate(predictions)
+      val mae = evaluator.setMetricName("mae").evaluate(predictions)
+      val r2 = evaluator.setMetricName("r2").evaluate(predictions)
+      println(s"\nRoot Mean Squared Error (RMSE) on test data = $rmse")
+      println(s"Root Absolute Error (RAE) on test data = $mae")
+      println(s"R2 on test data= $r2 \n")
 
     }
 }

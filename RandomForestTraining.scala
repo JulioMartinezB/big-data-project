@@ -31,19 +31,23 @@ object RandomForestTraining {
     val evaluator = new RegressionEvaluator()
       .setLabelCol("ArrDelay")
       .setPredictionCol("prediction")
-      .setMetricName("rmse")
-
+    
     val cvRF = new CrossValidator()
       .setEstimator(rf)
-      .setEvaluator(evaluator)
+      .setEvaluator(evaluator.setMetricName("rmse"))
       .setEstimatorParamMaps(paramGridRF)
       .setNumFolds(3)
 
-    val cvRFModel = cvRF.fit(train_data)
-    val predictions = cvRFModel.transform(test_data)
-
-    val rmse = evaluator.evaluate(predictions)
-    println(s"Root Mean Squared Error (RMSE) on test data = $rmse")
+    val rfModel = cvRF.fit(train_data)
+    val predictions = rfModel.transform(test_data)
+    
+    // Estos cambios son para poder ver las metricas de MAE y  R2  junto al RMSE 
+    val rmse = evaluator.setMetricName("rmse").evaluate(predictions)
+    val mae = evaluator.setMetricName("mae").evaluate(predictions)
+    val r2 = evaluator.setMetricName("r2").evaluate(predictions)
+    println(s"\nRoot Mean Squared Error (RMSE) on test data = $rmse")
+    println(s"Root Absolute Error (RAE) on test data = $mae")
+    println(s"R2 on test data= $r2 \n")
 
   }
 
