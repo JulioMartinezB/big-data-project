@@ -8,18 +8,7 @@ object Prediction {
 
   def predict(test: DataFrame, option: Int) {
 
-    var model = CrossValidatorModel.load(".\\models\\lrModel")
-
-    if (option == 1) {
-      val model = CrossValidatorModel.load(".\\models\\lrModel")
-    }
-    if (option == 2) {
-      val model = CrossValidatorModel.load(".\\models\\rfModel")
-    }
-    if (option == 3) {
-      val model = CrossValidatorModel.load(".\\models\\gbtModel")
-    }
-
+    val model = selectModel(option)
 
     val evaluator = new RegressionEvaluator()
       .setLabelCol("ArrDelay")
@@ -34,6 +23,18 @@ object Prediction {
     println(s"Root Absolute Error (RAE) on test data = $mae")
     println(s"R2 on test data= $r2 \n")
 
+  }
+
+  def selectModel(option: Int): CrossValidatorModel = {
+    if (option == 1) {
+      CrossValidatorModel.load(".\\models\\lrModel")
+    }
+    else if (option == 2) {
+      CrossValidatorModel.load(".\\models\\rfModel")
+    }
+    else {
+      CrossValidatorModel.load(".\\models\\gbtModel")
+    }
   }
 
 }
