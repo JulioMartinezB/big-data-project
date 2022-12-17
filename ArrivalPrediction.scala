@@ -4,9 +4,11 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.{SparkSession, Row}
+import org.apache.spark.sql.{Row, SparkSession}
+
 import scala.math.Pi
 import org.apache.spark.sql.functions._
+import org.sparkproject.dmg.pmml.False
 
 object ArrivalPrediction {
 
@@ -14,35 +16,161 @@ object ArrivalPrediction {
 
     Logger.getLogger("org").setLevel(Level.WARN)
 
-    val conf = new SparkConf().setAppName("My first Spark application")
+    val conf = new SparkConf()
+      .setMaster("local")
+      .setAppName("Arrival Prediction")
+
     val sc = new SparkContext(conf)
-
-    val spark = SparkSession.builder().getOrCreate()
-    import spark.implicits._
-
     sc.setLogLevel("warn")
 
-    var flights = spark.read
-                      .format("csv")
-                      .option("delimiter", ",")
-                      .option("header", true)
-                      .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\features.csv")
+    val spark = SparkSession
+      .builder()
+      .appName("Arrival Prediction")
+      .getOrCreate()
 
-    flights.show()
+    import spark.implicits._
 
-    val cols_int = Seq("DayOfWeek", "CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "DepTimeMin", "CRSDepTimeMin",
-                      "CRSArrTimeMin", "avg(DepDelay)","ArrDelay")
-    val cols_double = Seq("OriginLat", "OriginLong", "DestLat", "DestLong", "MonthSine", "MonthCos")
-
-    for (col <- cols_int) {
-      flights = flights.withColumn(col, flights(col).cast("int"))
+    if (args.length == 0) {
+      println("No arguments passed to the application")
+      -1
     }
 
-    for (col <- cols_double) {
-      flights = flights.withColumn(col, flights(col).cast("double"))
+    if (args.length > 0) {
+      if (FileValidator.fileExists(args(0)) == false) {
+        println("El fichero no existe")
+      } else if (FileValidator.fileIsCSV(args(0)) == false) {
+          println("File is not .csv")
+      } else {
+          val flights = spark.read
+            .format("csv")
+            .option("delimiter", ",")
+            .option("header", true)
+            .load(args(0))
+          if (FileValidator.fileContainsColumns(flights) == false) {
+            -1
+          }
+      }
     }
 
-    FeatureSelection.featureSelection(flights)
+    val flights = spark.read
+      .format("csv")
+      .option("delimiter", ",")
+      .option("header", true)
+      .load(args(0))
+
+    var airports = spark.read
+      .format("csv")
+      .option("delimiter", ",")
+      .option("header", true)
+      .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\airports.csv")
+
+    var training = false
+    var model = 1
+
+    if (args.length == 2) {
+      if (args(1) == "-y") {
+        training = false
+      }
+      else if (args(1) == "-n") {
+        training = true
+      }
+      else if (args(1) == "-lr"){
+        model = 1
+      } else if (args(1) == "-rf") {
+        model = 2
+      } else if (args(1) == "-gb") {
+        model = 3
+      } else {
+        println("If you specify 2 args, the second must be -y to use a pretrained model, -n to train a new model, -lr for linear" +
+          "regression, -rf for Random Forest or -gb for Gradient Boosting")
+        -1
+      }
+    }
+
+    if (args.length > 2) {
+      if (args(1) == "-y") {
+        training = false
+      }
+      else if (args(1) == "-n") {
+        training = true
+      }
+      else {
+        println("If you specify  3 args, the second arg it must be -y to use a pretrained model or -n to train a new model")
+        -1
+      }
+      if (args(2) == "-lr") {
+        model = 1
+      } else if (args(2) == "-rf") {
+        model = 2
+      } else if (args(2) == "-gb") {
+        model = 3
+      } else {
+        println("If you specify 3 args, the third must be -y to use a pretrained model, -n to train a new model, -lr for linear" +
+          "regression, -rf for Random Forest or -gb for Gradient Boosting")
+        -1
+      }
+    }
+
+    if (training) {
+      var Array(train, test) = flights.randomSplit(Array(0.8, 0.2), seed = 12345)
+      train = TrainingPreProcessing.dataPreProcessing(train, airports)
+      test = TestPreProcessing.dataPreProcessing(test, airports)
+      val train_pca = PCASelection.nBestPCA(train, true)
+      val test_pca = PCASelection.nBestPCA(test, false)
+      if (model == 1) {
+        LinearRegressionTraining.modelTraining(train_pca)
+        Prediction.predict(test_pca, 1)
+      }
+      if (model == 2) {
+        RandomForestTraining.modelTraining(train_pca)
+        Prediction.predict(test_pca, 2)
+      }
+      if (model == 3) {
+        GradientBoostTraining.modelTraining(train_pca)
+        Prediction.predict(test_pca, 3)
+      }
+    } else {
+      val test = TestPreProcessing.dataPreProcessing(flights, airports)
+      val test_pca = PCASelection.nBestPCA(test, false)
+      if (model == 1) {
+        Prediction.predict(test_pca, 1)
+      }
+      if (model == 2) {
+        Prediction.predict(test_pca, 2)
+      }
+      if (model == 3) {
+        Prediction.predict(test_pca, 3)
+      }
+    }
+
+
+//    var flights = spark.read
+//                      .format("csv")
+//                      .option("delimiter", ",")
+//                      .option("header", true)
+//                      .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\features.csv")
+//
+//    flights.show()
+//
+//    val cols_int = Seq("DayOfWeek", "CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "DepTimeMin", "CRSDepTimeMin",
+//                      "CRSArrTimeMin", "avg(DepDelay)","ArrDelay")
+//    val cols_double = Seq("OriginLat", "OriginLong", "DestLat", "DestLong", "MonthSine", "MonthCos")
+//
+//    for (col <- cols_int) {
+//      flights = flights.withColumn(col, flights(col).cast("int"))
+//    }
+//
+//    for (col <- cols_double) {
+//      flights = flights.withColumn(col, flights(col).cast("double"))
+//    }
+//
+//    FeatureSelection.featureSelection(flights)
+
+
+
+
+
+
     //LinearRegressionTraining.modelTraining(flights)
 
 
