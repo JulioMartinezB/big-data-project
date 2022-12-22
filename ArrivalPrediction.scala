@@ -115,6 +115,7 @@ object ArrivalPrediction {
       var Array(train, test) = flights.randomSplit(Array(0.8, 0.2), seed = 12345)
       train = TrainingPreProcessing.dataPreProcessing(train, airports)
       test = TestPreProcessing.dataPreProcessing(test, airports)
+      FeatureSelection.featureSelection(train)
       val train_pca = PCASelection.nBestPCA(train, true)
       val test_pca = PCASelection.nBestPCA(test, false)
       if (model == 1) {

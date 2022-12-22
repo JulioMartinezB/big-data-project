@@ -6,7 +6,6 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.{Row, SparkSession}
 
-
 object PCASelection {
 
   def nBestPCA(data: DataFrame, train: Boolean): DataFrame = {
@@ -45,8 +44,8 @@ object PCASelection {
       pcaModel.write.overwrite().save(".\\models\\pcaModel")
       get_result(pcaModel, data_scaled)
 
-    } else {
 
+    } else {
       val pcaModel = PCAModel.load(".\\models\\pcaModel")
       get_result(pcaModel, data_scaled)
 
@@ -82,6 +81,7 @@ object PCASelection {
       .setIndices(Array.range(0, cumsum_var.count().toInt))
 
     val pca_sliced = slicer.transform(result).select("features", "ArrDelay")
+    println("HOLAAAAAAAAAA")
     pca_sliced
 
   }

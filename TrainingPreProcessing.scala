@@ -1,7 +1,8 @@
 package upm.bd
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.functions._
+
 import scala.math.Pi
 
 object TrainingPreProcessing {
@@ -42,14 +43,17 @@ object TrainingPreProcessing {
 
     features = features.na.drop(Seq("ArrDelay"))
 
-    features = features.withColumn("MonthSine", sin(features("Month") * Pi / 6))
-    features = features.withColumn("MonthCos", cos(features("Month") * Pi / 6))
 
-    features = features.drop("Month")
-    features = features.drop("DayOfMonth")
+
+
+//    features = features.withColumn("MonthSine", sin(features("Month") * Pi / 6))
+//    features = features.withColumn("MonthCos", cos(features("Month") * Pi / 6))
+//
+
+    //features = features.drop("DayOfMonth")
 
     var cols = features.columns
-    val cols_int = Seq("DayOfWeek", "CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "ArrDelay")
+    val cols_int = Seq("DayOfMonth","DayOfWeek", "CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "ArrDelay")
     val cols_double = Seq("OriginLat", "OriginLong", "DestLat", "DestLong")
 
     // Convertimos los tipos, así los NA que no se pueden castear pasan a ser nulos
@@ -61,6 +65,32 @@ object TrainingPreProcessing {
       features = features.withColumn(col, features(col).cast("double"))
     }
 
+    val isSpring = udf((col: Int) => {
+      if (col == 3 | col == 4 | col == 5) 1
+      else 0
+    })
+
+    val isSummer = udf((col: Int) => {
+      if (col == 6 | col == 7 | col == 8) 1
+      else 0
+    })
+
+    val isAutumn = udf((col: Int) => {
+      if (col == 9 | col == 10 | col == 11) 1
+      else 0
+    })
+
+    val isWinter = udf((col: Int) => {
+      if (col == 12 | col == 1 | col == 2) 1
+      else 0
+    })
+
+    features = features.withColumn("Spring", isSpring(col("Month")))
+    features = features.withColumn("Summer", isSummer(col("Month")))
+    features = features.withColumn("Autumn", isAutumn(col("Month")))
+    features = features.withColumn("Winter", isWinter(col("Month")))
+    features = features.drop("Month")
+    features.show()
 
     features = features.na.drop
 

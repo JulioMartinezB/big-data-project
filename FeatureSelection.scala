@@ -9,6 +9,10 @@ object FeatureSelection {
 
   def featureSelection(data: DataFrame) {
 
+    //var data2 = data.select("TaxiOut","DayOfWeek", "ArrDelay", "MonthSine", "MonthCos", "DestLong", "DestLat", "CRSArrTimeMin","DepDelay")
+
+    data.show()
+
     var cols = data.drop("ArrDelay").columns
 
     val assembler = new VectorAssembler()
@@ -22,13 +26,14 @@ object FeatureSelection {
     val selector = new UnivariateFeatureSelector()
       .setFeatureType("continuous")
       .setLabelType("continuous")
-      .setSelectionMode("numTopFeatures")
-      .setSelectionThreshold(4)
+      .setSelectionMode("fwe")
+      .setSelectionThreshold(0.05)
       .setFeaturesCol("features")
       .setLabelCol("ArrDelay")
       .setOutputCol("selectedFeatures")
 
     val result = selector.fit(features.select("features", "ArrDelay")).transform(features)
+    println(selector.fit(features.select("features", "ArrDelay")).selectedFeatures.mkString(" "))
 
     println(s"UnivariateFeatureSelector output with top ${selector.getSelectionThreshold}" +
       s" features selected using f_classif")
