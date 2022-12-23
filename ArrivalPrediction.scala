@@ -62,7 +62,7 @@ object ArrivalPrediction {
       .format("csv")
       .option("delimiter", ",")
       .option("header", true)
-      .load("C:\\Users\\carvs\\Documentos\\Master\\Primer cuatri\\Big data\\practical-work\\data\\airports.csv")
+      .load("data/airports.csv")
 
     var training = false
     var model = 1
@@ -113,11 +113,20 @@ object ArrivalPrediction {
 
     if (training) {
       var Array(train, test) = flights.randomSplit(Array(0.8, 0.2), seed = 12345)
-      train = TrainingPreProcessing.dataPreProcessing(train, airports)
-      test = TestPreProcessing.dataPreProcessing(test, airports)
-      FeatureSelection.featureSelection(train)
+
+      // train = TrainingPreProcessing.dataPreProcessing(train, airports)
+      // test = TestPreProcessing.dataPreProcessing(test, airports)
+
+      train = PreProcessing.dataPreProcessing(train, airports, true)
+      test = PreProcessing.dataPreProcessing(test, airports, false)
+
+      var Array(train_selected, test_selected)  = FeatureSelection.featureSelection(train, test)
+      // val train_selected = FeatureSelection.select(index_selected, train)
+      // val test_selected = FeatureSelection.select(index_selected, test)
+
       val train_pca = PCASelection.nBestPCA(train, true)
       val test_pca = PCASelection.nBestPCA(test, false)
+
       if (model == 1) {
         LinearRegressionTraining.modelTraining(train_pca)
         Prediction.predict(test_pca, 1)
