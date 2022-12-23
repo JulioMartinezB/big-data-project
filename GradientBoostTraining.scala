@@ -3,6 +3,7 @@ package upm.bd
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor}
 import org.apache.spark.ml.evaluation.RegressionEvaluator
+import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
 
 object GradientBoostTraining {

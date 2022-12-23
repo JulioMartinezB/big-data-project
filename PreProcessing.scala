@@ -7,56 +7,33 @@ import scala.math.Pi
 
 object PreProcessing {
 
-  def dataPreProcessing(data: DataFrame, airports: DataFrame, train: Boolean): DataFrame = {
+  def dataPreProcessing(data: DataFrame, airports: DataFrame, train: Boolean, do_analysis: Boolean): DataFrame = {
 
     var features = data.select("Month", "DayofMonth", "DayOfWeek", "DepTime", "CRSDepTime", "CRSArrTime",
       "UniqueCarrier", "FlightNum", "TailNum", "CRSElapsedTime", "DepDelay", "Origin", "Dest", "Distance",
       "TaxiOut", "ArrDelay")
 
-
-
+    // Numeric columns to cast so the NA values that are string are converted to nulls
     val cols_int = Array("Month", "DayofMonth", "DayOfWeek", "CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "ArrDelay",
       "DepTime", "CRSDepTime", "CRSArrTime")
-    val cols_str = Array("UniqueCarrier", "Origin", "Dest")
     
-    // Convertimos los tipos, así los NA que no se pueden castear pasan a ser nulos e imputamos los faltantes
+    // Cast of numeric columns
     for (col <- cols_int) {
       features = features.withColumn(col, features(col).cast("int"))
     }
 
-    // for (col <- cols_str) {
-    //   features = features.withColumn(col, features(col).cast("string"))
-    // }
-
-
-
-
-    // convert time columns into minutes the 
+    // Convert time columns into minutes the
     val cols_min= Array("DepTimeMin", "CRSDepTimeMin", "CRSArrTimeMin")
     val cols_raw= Array("DepTime", "CRSDepTime", "CRSArrTime")
 
     for ((col, colraw) <- cols_min.zip(cols_raw)){
-
         features = features.withColumn(col, (features(colraw) / 100).cast("int"))
         features = features.withColumn(col, (features(col) * 60 + features(colraw) % 100).cast("int"))
         features = features.drop(colraw)
-
     }
 
-    // features = features.withColumn("DepTimeMin", (features("DepTime") / 100).cast("int"))
-    // features = features.withColumn("DepTimeMin", (features("DepTimeMin") * 60 + features("DepTime") % 100).cast("int"))
-    // features = features.drop("DepTime")
 
-    // features = features.withColumn("CRSDepTimeMin", (features("CRSDepTime") / 100).cast("int"))
-    // features = features.withColumn("CRSDepTimeMin", (features("CRSDepTimeMin") * 60 + features("CRSDepTime") % 100).cast("int"))
-    // features = features.drop("CRSDepTime")
-
-    // features = features.withColumn("CRSArrTimeMin", (features("CRSArrTime") / 100).cast("int"))
-    // features = features.withColumn("CRSArrTimeMin", (features("CRSArrTimeMin") * 60 + features("CRSArrTime") % 100).cast("int"))
-    // features = features.drop("CRSArrTime")
-
-
-    // calculate de average delay per company
+    // Calculate de average delay per company
 
     val airlines = data.groupBy("UniqueCarrier").agg(mean("DepDelay"))
     features = features.join(airlines, Seq("UniqueCarrier"), "left").drop("UniqueCarrier")
@@ -64,7 +41,7 @@ object PreProcessing {
 
 
 
-    // adds the latitude and longitude of the origin and destiny
+    // Adds the latitude and longitude of the origin and destiny
 
     val origins = airports.select("iata", "lat", "long")
       .withColumnRenamed("iata", "Origin")
@@ -78,34 +55,39 @@ object PreProcessing {
     features = features.join(origins, Seq("Origin"), "left").drop("Origin")
     features = features.join(destinations, Seq("Dest"), "left").drop("Dest")
 
-
+    // We cast now the new features that are of type double
     val cols_double = Seq("OriginLat", "OriginLong", "DestLat", "DestLong")
 
     for (col <- cols_double) {
       features = features.withColumn(col, features(col).cast("double"))
     }
 
+    // Previous data analysis
+    if (do_analysis) {
+      analysis(features)
+    }
 
+     // In case of training data we will drop the outliers and the rows with missing values
      if (train) {
 
-        //    // Columnas a borrar outliers
-        //    cols = Array("CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "DepTimeMin", "CRSDepTimeMin",
-        //      "CRSArrTimeMin", "avg(DepDelay)")
-        //
-        //    // Borramos outliers
-        //    for (columna <- cols) {
-        //      val quantiles = features.stat.approxQuantile(columna, Array(0.25, 0.75), 0.01)
-        //      val IQR = quantiles(1) - quantiles(0)
-        //      val lowerRange = quantiles(0) - 3 * IQR
-        //      val upperRange = quantiles(1) + 3 * IQR
-        //      print(lowerRange + " " + upperRange)
-        //      features.filter(features(columna) < lowerRange || features(columna) > upperRange).show()
-        //      features = features.filter(features(columna) > lowerRange && features(columna) < upperRange)
-        //    }
+        // Columns in which we will drop outliers for the training proecess
+        val cols = Array("CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "DepTimeMin", "CRSDepTimeMin",
+          "CRSArrTimeMin", "avg(DepDelay)")
 
+        // Dropping outliers
+        for (columna <- cols) {
+          val quantiles = features.stat.approxQuantile(columna, Array(0.25, 0.75), 0.01)
+          val IQR = quantiles(1) - quantiles(0)
+          val lowerRange = quantiles(0) - 3 * IQR
+          val upperRange = quantiles(1) + 3 * IQR
+          features = features.filter(features(columna) > lowerRange && features(columna) < upperRange)
+        }
+
+        // we drop the missing values
         features = features.na.drop
 
-    } else {
+     // In case of test data we will impute the missing values with mean for continuous and mode for cathegorical
+     } else {
 
         val cols_cat = Array("DayOfWeek", "avg(DepDelay)", "OriginLat", "DestLat", "OriginLong", "DestLong")
         val cols_cont = Array("CRSElapsedTime", "DepDelay", "Distance", "TaxiOut", "DepTimeMin",
@@ -129,7 +111,7 @@ object PreProcessing {
     }
 
     
-
+    // UDFS to create binary columns for each season
     val isSpring = udf((col: Int) => {
       if (col == 3 | col == 4 | col == 5) 1
       else 0
@@ -150,46 +132,41 @@ object PreProcessing {
       else 0
     })
 
+    // New binary columns indicating the season
     features = features.withColumn("Spring", isSpring(col("Month")))
     features = features.withColumn("Summer", isSummer(col("Month")))
     features = features.withColumn("Autumn", isAutumn(col("Month")))
     features = features.withColumn("Winter", isWinter(col("Month")))
     features = features.drop("Month")
-    features.show()
-
-
-    // Nulls treatments
-
-    //    // Total de nulos por columna
-    //    for (columna <- cols) {
-    //      val nulos = features.filter(col(columna).isNull).count()
-    //      print(columna + ": ")
-    //      print(nulos + "\n")
-    //    }
-
-
    
-    
+    // If there is misssing value for ArrDelay we drop the row because we have no information
+    // to check the correctness of the model
     features = features.na.drop(Seq("ArrDelay"))
     features
 
   }
+
+  // Analysys of the dataset (higher and lower values and types for columns)
   def analysis(data: DataFrame) {
 
     val cols = data.columns
 
-    // Ver los tipos de las variables
+    // type of the columns
+    println("Types of the columns")
     data.printSchema()
 
-     // Minimo máximo, media, etc
+     // Min, max and mean
     for (columna <- cols) {
-        data.describe(columna).show()
+      println("Description of column " + columna)
+      data.describe(columna).show()
     }
 
-    // Mostrar mayores y menores valores y apariciones (se puede optimizar)
+    // Highest and lowest values (to check possible outliers)
     for (columna <- cols) {
-        data.groupBy(columna).count().orderBy(columna).show()
-        data.groupBy(columna).count().orderBy(desc(columna)).show()
+      println("Lowest values of column " + columna)
+      data.groupBy(columna).count().orderBy(columna).show()
+      println("Highest values of column " + columna)
+      data.groupBy(columna).count().orderBy(desc(columna)).show()
     }
 
   }

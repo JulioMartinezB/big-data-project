@@ -11,7 +11,7 @@ object PCASelection {
   def nBestPCA(data: DataFrame, train: Boolean): DataFrame = {
 
 
-    var cols = data.drop("ArrDelay").columns
+    val cols = data.drop("ArrDelay").columns
 
     val assembler = new VectorAssembler()
       .setInputCols(cols)
@@ -20,6 +20,7 @@ object PCASelection {
     var data_assembled = assembler.transform(data)
     data_assembled = data_assembled.select("ArrDelay", "features")
 
+    // Scalling features before PCA
     val scaler = new StandardScaler()
       .setInputCol("features")
       .setOutputCol("scaledFeatures")
@@ -33,6 +34,7 @@ object PCASelection {
 
     //data_scaled.show(false)
 
+    // In case of training we generate a PCA model and save it for posterior use
     if (train) {
 
       val pca = new PCA()
@@ -42,19 +44,19 @@ object PCASelection {
 
       val pcaModel = pca.fit(data_scaled)
       pcaModel.write.overwrite().save(".\\models\\pcaModel")
-      get_result(pcaModel, data_scaled)
+      get_result(pcaModel, data_scaled, false)
 
-
+    // In case of just predicting we use an already PCA model
     } else {
       val pcaModel = PCAModel.load(".\\models\\pcaModel")
-      get_result(pcaModel, data_scaled)
+      get_result(pcaModel, data_scaled, true)
 
     }
 
   }
 
-
-  def get_result(model: PCAModel, data_scaled: DataFrame): DataFrame = {
+  // we get the principal components and select the number that explain a certain amount of variance
+  def get_result(model: PCAModel, data_scaled: DataFrame, print: Boolean): DataFrame = {
 
     val result = model.transform(data_scaled).select("pcaFeatures", "ArrDelay")
     result.show(false)
@@ -66,13 +68,16 @@ object PCASelection {
 
     import spark.implicits._
 
+    // We check for the number of components that explain the 95% of the variance of the data
     val explained_var = model.explainedVariance
-    var explained_var_df = explained_var.values.toSeq.toDF("explained_var")
+    val explained_var_df = explained_var.values.toSeq.toDF("explained_var")
     var cumsum_var = explained_var_df.withColumn("Cumulative Sum EV", sum("explained_var")
       .over(Window.orderBy($"explained_var".desc)))
     cumsum_var = cumsum_var.where(col("Cumulative Sum EV") <= 0.95)
-    cumsum_var.show(false)
-    println("n selected", cumsum_var.count(), "\n")
+    if (print) {
+      cumsum_var.show(false)
+      println("n selected", cumsum_var.count(), "\n")
+    }
 
 
     val slicer = new VectorSlicer()
@@ -81,7 +86,6 @@ object PCASelection {
       .setIndices(Array.range(0, cumsum_var.count().toInt))
 
     val pca_sliced = slicer.transform(result).select("features", "ArrDelay")
-    println("HOLAAAAAAAAAA")
     pca_sliced
 
   }

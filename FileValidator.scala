@@ -6,6 +6,7 @@ import java.nio.file.{Files, Paths}
 
 object FileValidator {
 
+  // Checks if the specified file exists
   def fileExists(path: String): Boolean = {
 
     if (Files.exists(Paths.get(path))) {
@@ -16,6 +17,7 @@ object FileValidator {
 
   }
 
+  // Checks if the specified file is a csv
   def fileIsCSV(path: String): Boolean = {
 
     if (path.takeRight(4) == ".csv") {
@@ -26,6 +28,7 @@ object FileValidator {
 
   }
 
+  // Checks if the file contains the necessary columns
   def fileContainsColumns(data: DataFrame): Boolean = {
     val necessary_cols = Array("Month", "DayofMonth", "DayOfWeek","DepTime","CRSDepTime","ArrTime","CRSArrTime",
       "UniqueCarrier","CRSElapsedTime","ArrDelay","DepDelay","Origin","Dest","Distance","TaxiOut")
